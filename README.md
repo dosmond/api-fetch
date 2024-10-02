@@ -38,17 +38,27 @@ Create a file to define your API endpoints:
 ```ts
 import type { ApiDefinition } from '@danstackme/api-fetch';
 
-type SignupRequest = { username: string; password: string };
-type SignupResponse = { token: string };    
+type MeResponse = {
+    id: string;
+    username: string;
+}
 
 const fetchEndpoints = {
-    "v1/auth/signup": {} as ApiDefinition<SignupRequest, SignupResponse>,
-    "v1/auth/login": {} as ApiDefinition<{ username: string; password: string }, { token: string }>
+    "v1/auth/me": {} as ApiDefinition<void, MeResponse>,
 } as const;
 
 type FetchEndpoints = typeof fetchEndpoints;
 
 export { FetchEndpoints };
+
+type MutateEndpoints = {
+    "v1/auth/signup": {} as ApiDefinition<SignupRequest, SignupResponse>,
+    "v1/auth/login": {} as ApiDefinition<{ username: string; password: string }, { token: string }>
+} as const;
+
+type MutateEndpoints = typeof mutateEndpoints;
+
+export { MutateEndpoints };
 ```
 
 ### 3. Use Fetch Hooks
@@ -57,14 +67,13 @@ Use the `useFetch` hook to fetch data. `useFetch` will auto-complete the endpoin
 
 ```ts
 import { useFetch } from '@danstackme/api-fetch';
+import { FetchEndpoints } from './path/to/fetchEndpoints';
 
-const { data, isLoading, error, refetch } = useFetch('v1/auth/signup', {
+const { data, isLoading, error, refetch } = useFetch<FetchEndpoints>('v1/auth/me', {
     body: { username: 'test', password: 'test' }
 });
 
 ```
-
-![Autocomplete endpoint url](assets/image.png)
 
 ### 4. Use Do Hooks
 
@@ -72,8 +81,9 @@ Use the `useDo` hook to perform actions. `useDo` will auto-complete the endpoint
 
 ```ts
 import { useDo } from '@danstackme/api-fetch';
+import { MutateEndpoints } from './path/to/mutateEndpoints';
 
-const { data, isLoading, error, refetch } = useDo('v1/auth/signup', {
+const { data, isLoading, error, refetch } = useDo<MutateEndpoints>('v1/auth/signup', {
     method: 'POST',
     body: { username: 'test', password: 'test' }
 });
