@@ -2,6 +2,12 @@
 
 This library provides a type-safe way to interact with your API endpoints as a wrapper around @tanstack/react-query.
 
+## Installation
+
+```bash
+npm install @danstackme/api-fetch
+```
+
 ## Setup
 
 ### 1. Set up ApiProvider
@@ -9,7 +15,7 @@ This library provides a type-safe way to interact with your API endpoints as a w
 Wrap your app with the ApiProvider:
 
 ```jsx
-import { ApiProvider } from 'api-fetch';
+import { ApiProvider } from '@danstackme/api-fetch';
 
 const queryClient = new QueryClient();
 
@@ -32,7 +38,7 @@ const App = () => {
 Create a file to define your API endpoints:
 
 ```ts
-import type { ApiDefinition } from 'api-fetch';
+import type { ApiDefinition } from '@danstackme/api-fetch';
 
 type SignupRequest = { username: string; password: string };
 type SignupResponse = { token: string };    
@@ -52,7 +58,7 @@ export { fetchEndpoints, FetchEndpoints };
 Use the `useFetch` hook to fetch data. `useFetch` will auto-complete the endpoints found in the `fetchEndpoints` object and provide you with a type-safe way to interact with the API.
 
 ```ts
-import { useFetch } from 'api-fetch';
+import { useFetch } from '@danstackme/api-fetch';
 
 const { data, isLoading, error, refetch } = useFetch('v1/auth/signup', {
     body: { username: 'test', password: 'test' }
@@ -67,7 +73,7 @@ const { data, isLoading, error, refetch } = useFetch('v1/auth/signup', {
 Use the `useDo` hook to perform actions. `useDo` will auto-complete the endpoints found in the `mutateEndpoints` object.
 
 ```ts
-import { useDo } from 'api-fetch';
+import { useDo } from '@danstackme/api-fetch';
 
 const { data, isLoading, error, refetch } = useDo('v1/auth/signup', {
     method: 'POST',
@@ -81,7 +87,7 @@ const { data, isLoading, error, refetch } = useDo('v1/auth/signup', {
 The library provides a way to handle errors in your API calls. You can pass an `onError` function to the `ApiProvider` to handle errors globally.
 
 ```ts
-import { ApiProvider } from 'api-fetch';
+import { ApiProvider } from '@danstackme/api-fetch';
 
 const queryClient = new QueryClient();
 
