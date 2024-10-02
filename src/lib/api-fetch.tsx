@@ -8,20 +8,17 @@ import {
   UseQueryOptions,
 } from "@tanstack/react-query";
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-import { request } from "http";
 import React, { createContext, ReactNode, useContext } from "react";
+
 
 export type ApiDefinition<T, R> = {
   request: T;
   response: R;
 };
 
-// Create the context
 type ApiContextType<TFetch = {}, TMutate = {}> = {
   baseUrl: string;
   queryClient: QueryClient;
-  fetchEndpoints: TFetch;
-  mutateEndpoints?: TMutate;
   useFetch: <K extends keyof TFetch>(
     endpoint: K,
     data: TFetch[K] extends { request: any } ? TFetch[K]["request"] : never,
@@ -64,8 +61,6 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
   children,
   baseUrl,
   queryClient,
-  fetchEndpoints,
-  mutateEndpoints,
   onError,
 }: {
   children: ReactNode;
@@ -75,7 +70,6 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
   mutateEndpoints?: TMutate;
   onError?: (error: AxiosError | Error) => void;
 }) {
-
   function useFetch<K extends keyof TFetch>(
     endpoint: K,
     data: TFetch[K] extends { request: any } ? TFetch[K]["request"] : never,
@@ -106,7 +100,7 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
           onError?.(err as AxiosError | Error);
 
           if(onError) {
-            return err.response?.data;
+            return (err as AxiosError).response?.data;
           }
           throw err;
         }
@@ -143,7 +137,7 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
           onError?.(err as AxiosError | Error);
 
           if(onError) {
-            return err.response?.data;
+            return (err as AxiosError).response?.data;
           }
           throw err;
         }
@@ -155,8 +149,6 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
   const contextValue: ApiContextType<TFetch, TMutate> = {
     baseUrl,
     queryClient,
-    fetchEndpoints,
-    mutateEndpoints,
     useFetch: useFetch as ApiContextType<TFetch, TMutate>["useFetch"],
     useDo: useDo as ApiContextType<TFetch, TMutate>["useDo"],
   };

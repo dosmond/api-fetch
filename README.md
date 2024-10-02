@@ -24,8 +24,6 @@ const App = () => {
     <ApiProvider
       baseUrl="http://localhost:3000"
       queryClient={queryClient}
-      fetchEndpoints={fetchEndpoints}
-      mutateEndpoints={mutateEndpoints}
     >
         <YourComponent />
     </ApiProvider>
@@ -50,7 +48,7 @@ const fetchEndpoints = {
 
 type FetchEndpoints = typeof fetchEndpoints;
 
-export { fetchEndpoints, FetchEndpoints };
+export { FetchEndpoints };
 ```
 
 ### 3. Use Fetch Hooks
