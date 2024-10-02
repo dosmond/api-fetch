@@ -1,6 +1,6 @@
 import React from "react";
 import { ApiDefinition, ApiProvider } from "../src/lib/api-fetch";
-import { InternalApp } from "./InternalApp";
+import { Consumer } from "./Consumer";
 import { QueryClient } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -24,10 +24,10 @@ const fetchEndpoints = {
 
 const App = () => {
   return (
-    <ApiProvider baseUrl="http://localhost:3000" queryClient={queryClient} fetchEndpoints={fetchEndpoints} onError={(err) => {
+    <ApiProvider baseUrl="http://localhost:3000" queryClient={queryClient} onError={(err) => {
       console.log(err);
     }}>
-      <InternalApp />
+      <Consumer />
     </ApiProvider>
   );
 };

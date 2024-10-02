@@ -94,7 +94,6 @@ const App = () => {
     <ApiProvider
         baseUrl="http://localhost:3000" 
         queryClient={queryClient} 
-        fetchEndpoints={fetchEndpoints}
         onError={(err) => {
             console.log(err);
         }}

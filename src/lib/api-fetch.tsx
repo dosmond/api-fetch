@@ -66,8 +66,6 @@ export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any
   children: ReactNode;
   baseUrl: string;
   queryClient: QueryClient;
-  fetchEndpoints: TFetch;
-  mutateEndpoints?: TMutate;
   onError?: (error: AxiosError | Error) => void;
 }) {
   function useFetch<K extends keyof TFetch>(
