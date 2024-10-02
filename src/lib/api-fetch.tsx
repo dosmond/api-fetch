@@ -1,71 +1,216 @@
-import React, { createContext, useContext, ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import axios from 'axios';
-import { useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
+import {
+  QueryClient,
+  QueryClientProvider,
+  QueryKey,
+  useMutation,
+  UseMutationOptions,
+  useQuery,
+  UseQueryOptions,
+} from "@tanstack/react-query";
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import { request } from "http";
+import React, { createContext, ReactNode, useContext } from "react";
 
-interface Endpoints {
-  'v1/auth/signup': { request: { username: string; password: string }; response: { token: string } }
-}
-
-// Create the context
-type ApiContextType<T> = {
-  useFetch: <K extends keyof T>(
-    endpoint: K extends keyof T ? K : never,
-    options?: { params?: T[K] extends { request: any } ? T[K]['request'] : never }
-  ) => ReturnType<typeof useQuery<T[K] extends { response: any } ? T[K]['response'] : never>>;
+export type ApiDefinition<T, R> = {
+  request: T;
+  response: R;
 };
 
-const ApiContext = createContext<ApiContextType<any> | null>(null);
+// Create the context
+type ApiContextType<TFetch = {}, TMutate = {}> = {
+  baseUrl: string;
+  queryClient: QueryClient;
+  fetchEndpoints: TFetch;
+  mutateEndpoints?: TMutate;
+  useFetch: <K extends keyof TFetch>(
+    endpoint: K,
+    data: TFetch[K] extends { request: any } ? TFetch[K]["request"] : never,
+    options?: {
+      params?: TFetch[K] extends { request: any }
+        ? TFetch[K]["request"]
+        : never;
+    },
+    queryOptions?: Omit<
+    UseQueryOptions<
+      TFetch[K] extends { response: any } ? TFetch[K]["response"] : never
+    >,
+    "queryFn" | "queryKey"
+  >
+  ) => ReturnType<
+    typeof useQuery<
+      TFetch[K] extends { response: any } ? TFetch[K]["response"] : never
+    >
+  >;
+  useDo: <K extends keyof TMutate>(
+    endpoint: K,
+    body: TMutate[K] extends { request: any } ? TMutate[K]["request"] : never,
+    requestOptions?: Omit<AxiosRequestConfig, "data"> & {
+      body?: TMutate[K] extends { request: any }
+        ? TMutate[K]["request"]
+        : never;
+    },
+    mutationOptions?: Omit<UseMutationOptions, "mutationFn">
+  ) => ReturnType<
+    typeof useMutation<
+      TMutate[K] extends { response: any } ? TMutate[K]["response"] : never
+    >
+  >;
+};
+
+const ApiContext = createContext<ApiContextType<any, any> | null>(null);
 
 // Create the provider component
-export function ApiProvider<T>({
+export function ApiProvider<TFetch extends Record<string, ApiDefinition<any, any>>, TMutate extends Record<string, ApiDefinition<any, any>>>({
   children,
   baseUrl,
+  queryClient,
+  fetchEndpoints,
+  mutateEndpoints,
+  onError,
 }: {
   children: ReactNode;
   baseUrl: string;
+  queryClient: QueryClient;
+  fetchEndpoints: TFetch;
+  mutateEndpoints?: TMutate;
+  onError?: (error: AxiosError | Error) => void;
 }) {
-  const queryClient = new QueryClient();
 
-  function useFetch<K extends keyof T>(
-    endpoint: K extends keyof T ? K : never,
-    options?: { params?: T[K] extends { request: any } ? T[K]['request'] : never }
+  function useFetch<K extends keyof TFetch>(
+    endpoint: K,
+    data: TFetch[K] extends { request: any } ? TFetch[K]["request"] : never,
+    requestOptions?: Omit<AxiosRequestConfig, "params" | "method"> & {
+      params?: TFetch[K] extends { request: any }
+        ? TFetch[K]["request"]
+        : never;
+    },
+    queryOptions?: Omit<
+    UseQueryOptions<
+      TFetch[K] extends { response: any } ? TFetch[K]["response"] : never
+    >,
+    "queryFn" | "queryKey"
+  >
   ) {
-    return useQuery<T[K] extends { response: any } ? T[K]['response'] : never>({
-      queryKey: [endpoint, options?.params],
+    return useQuery<
+      TFetch[K] extends { response: any } ? TFetch[K]["response"] : never
+    >({
+      queryKey: [endpoint, requestOptions?.params],
       queryFn: async () => {
-        const { data } = await axios.get(`${baseUrl}${endpoint as string}`, { params: options?.params });
-        return data;
-      }
+        try {
+          const { data: responseData } = await axios(
+            `${baseUrl}${endpoint as string}`,
+            { params: data ?? {}}
+          );
+          return responseData;
+        } catch(err) {
+          onError?.(err as AxiosError | Error);
+
+          if(onError) {
+            return err.response?.data;
+          }
+          throw err;
+        }
+      },
+      ...queryOptions,
     });
   }
 
+  function useDo<K extends keyof TMutate>(
+    endpoint: K extends keyof TMutate ? K : never,
+    body: TMutate[K] extends { request: any } ? TMutate[K]["request"] : never,
+    requestOptions?: Omit<AxiosRequestConfig, "data"> & {
+      body?: TMutate[K] extends { request: any }
+        ? TMutate[K]["request"]
+        : never;
+    },
+    mutationOptions?: Omit<UseMutationOptions, "mutationFn">
+  ) {
+    return useMutation<
+      TMutate[K] extends { response: any } ? TMutate[K]["response"] : never
+    >({
+      mutationFn: async () => {
+        try {
+          const { data } = await axios(
+            `${baseUrl}${endpoint as string}`,
+          {
+            data: body,
+            method: "POST",
+            ...requestOptions,
+          }
+        );
+        return data;
+        } catch(err) {
+          onError?.(err as AxiosError | Error);
+
+          if(onError) {
+            return err.response?.data;
+          }
+          throw err;
+        }
+      },
+      ...mutationOptions,
+    });
+  }
+
+  const contextValue: ApiContextType<TFetch, TMutate> = {
+    baseUrl,
+    queryClient,
+    fetchEndpoints,
+    mutateEndpoints,
+    useFetch: useFetch as ApiContextType<TFetch, TMutate>["useFetch"],
+    useDo: useDo as ApiContextType<TFetch, TMutate>["useDo"],
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiContext.Provider value={{ useFetch: useFetch as ApiContextType<T>['useFetch'] }}>
-        {children}  
-      </ApiContext.Provider>
+      <ApiContext.Provider value={contextValue}>{children}</ApiContext.Provider>
     </QueryClientProvider>
   );
 }
 
-// Create a custom hook to use the context
-export function useApi<T>() {
-  const context = useContext(ApiContext);
+function useApi<TFetch = {}, TMutate = {}>() {
+  const context = useContext(ApiContext)
+
   if (!context) {
-    throw new Error('useApi must be used within an ApiProvider');
+    throw new Error("useGetValue must be used within an ApiProvider");
   }
-  return context as ApiContextType<T>;
+
+  return context as ApiContextType<TFetch, TMutate>; 
 }
 
-const { useFetch } = useApi<Endpoints>();
 
-const SignupSchema = z.object({
-  username: z.string(),
-  password: z.string()
-}).strict();
+export function useFetch<TFetch>(
+  endpoint: keyof TFetch,
+  data: TFetch[keyof TFetch] extends { request: any } ? TFetch[keyof TFetch]["request"] : never,
+  requestOptions?: Omit<AxiosRequestConfig, "params" | "method"> & {
+    params?: TFetch[keyof TFetch] extends { request: any }
+      ? TFetch[keyof TFetch]["request"]
+      : never;
+  },
+  queryOptions?: Omit<
+    UseQueryOptions<
+      TFetch[keyof TFetch] extends { response: any } ? TFetch[keyof TFetch]["response"] : never,
+      Error,
+      TFetch[keyof TFetch] extends { response: any } ? TFetch[keyof TFetch]["response"] : never,
+      QueryKey
+    >,
+    "queryFn" | "queryKey"
+  >
+) {
+  const { useFetch } = useApi<TFetch>();
 
-const signupData = SignupSchema.parse({ username: "test", password: "test" });
+  return useFetch(endpoint, data, requestOptions, queryOptions);
+}
 
-useFetch("v1/auth/signup", { params: signupData})
+export function useDo<TMutate>(
+  endpoint: keyof TMutate,
+  data: TMutate[keyof TMutate] extends { request: any } ? TMutate[keyof TMutate]["request"] : never,
+  requestOptions?: {
+    body?: TMutate[keyof TMutate] extends { request: any } ? TMutate[keyof TMutate]["request"] : never;
+  },
+  mutationOptions?: Omit<UseMutationOptions, "mutationFn">
+) {
+  const { useDo } = useApi<{}, TMutate>();
+
+  return useDo(endpoint, data, requestOptions, mutationOptions);
+}
